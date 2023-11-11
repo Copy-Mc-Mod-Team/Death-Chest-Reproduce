@@ -2,17 +2,19 @@ package io.github.baka4n.deathchestreproduce;
 
 import dev.architectury.event.Event;
 import dev.architectury.event.EventResult;
+import dev.architectury.event.events.client.ClientLifecycleEvent;
 import dev.architectury.event.events.common.EntityEvent;
-import net.minecraft.block.AbstractChestBlock;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.ChestBlock;
-import net.minecraft.block.FacingBlock;
+import dev.architectury.event.events.common.LifecycleEvent;
+import dev.architectury.event.events.common.PlayerEvent;
+import dev.architectury.event.events.common.TickEvent;
+import net.minecraft.block.*;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.ChestBlockEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.BlockItem;
 import net.minecraft.item.ItemStack;
+import net.minecraft.text.Text;
 import net.minecraft.util.collection.DefaultedList;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
@@ -27,6 +29,9 @@ public class DeathChestReproduce
 
 
 	public static void init() {
+//		TickEvent.SERVER_PRE.register(instance -> {
+//			instance.sendMessage(Text.empty().append("test"));
+//		});
 
 		EntityEvent.LIVING_DEATH.register((entity, source) -> {
 			if (entity instanceof PlayerEntity player) {
@@ -34,14 +39,10 @@ public class DeathChestReproduce
 					double x = player.getX();
 					double y = player.getY();
 					double z = player.getZ();
+					boolean b = true;
 					PlayerInventory inventory = player.getInventory();
-					DefaultedList<ItemStack> itemStacks = allInAll(inventory.main, inventory.offHand, inventory.armor);
-					for (ItemStack itemStack : itemStacks) {
-						if (allChestBlockEntityGen(player, itemStack, (int) x, (int) y, (int) z, itemStacks)) {
-							return EventResult.interruptTrue();
-						}
-					}
-					inventory.clear();
+					b = chestSelect(player, inventory, b, (int) x, (int) y, (int) z);
+					chestSaveOrDrop(player, b, (int) x, (int) y, (int) z, inventory);
 				}
 
 			}
@@ -49,47 +50,39 @@ public class DeathChestReproduce
 		});
 	}
 
-	public static boolean allChestBlockEntityGen(PlayerEntity player, ItemStack itemStack, int x, int y, int z, DefaultedList<ItemStack> itemStacks) {
-
-		if (itemStack.getItem() instanceof BlockItem blockItem && blockItem.getBlock() instanceof ChestBlock block) {
-			World world = player.getWorld();
-			BlockPos pos = new BlockPos(x, y, z);
-			BlockState defaultState = block.getDefaultState();
-			defaultState.with(FacingBlock.FACING, player.getHorizontalFacing());
-			world.setBlockState(pos, defaultState);
-			BlockEntity blockEntity = world.getBlockEntity(pos);
-			if (blockEntity instanceof ChestBlockEntity chestBlockEntity) {
-				boolean b = false;//delete one chest
-				for (int i = 0; i < itemStacks.size(); i++) {
-					ItemStack stack = itemStacks.get(i);
-					if (i < chestBlockEntity.size()) {
-						if (!b && stack.getItem() instanceof BlockItem bi && bi.getBlock().equals(blockItem.getBlock())) {
-							if (stack.getCount() > 1) {
-								stack.setCount(stack.getCount() - 1);
-							} else {
-								stack = ItemStack.EMPTY;
-							}
-							b = true;
-						}
-						if (!stack.isEmpty()) {
-							chestBlockEntity.setStack(i, stack);
-						}
+	private static void chestSaveOrDrop(PlayerEntity player, boolean b, int x, int y, int z, PlayerInventory inventory) {
+		if (!b) {
+			BlockEntity blockEntity = player.getWorld().getBlockEntity(new BlockPos(x, y, z));
+			if (blockEntity instanceof ChestBlockEntity chestEntity) {
+				for (int i = 0; i < inventory.size(); i++) {
+					ItemStack stack = inventory.getStack(i);
+					if (i < chestEntity.size()) {
+						chestEntity.setStack(i, stack);
 					} else {
 						player.dropStack(stack);
 					}
 				}
+				inventory.clear();
 			}
-			return true;
 		}
-		return false;
 	}
 
-	@SafeVarargs
-	public static DefaultedList<ItemStack> allInAll(DefaultedList<ItemStack>... lists) {
-		AtomicInteger integer = new AtomicInteger();
-		for (DefaultedList<ItemStack> list : lists) integer.addAndGet(list.size());
-		DefaultedList<ItemStack> tmp = DefaultedList.ofSize(integer.get(), ItemStack.EMPTY);
-		for (DefaultedList<ItemStack> list : lists) tmp.addAll(list);
-		return tmp;
+	private static boolean chestSelect(PlayerEntity player, PlayerInventory inventory, boolean b, int x, int y, int z) {
+		for (int i = 0; i < inventory.size(); i++) {
+			if (b) {
+				ItemStack stack = inventory.getStack(i);
+				if (stack.getItem() instanceof BlockItem blockItem && blockItem.getBlock() instanceof ChestBlock chest) {
+					b = false;
+					player.getWorld().setBlockState(new BlockPos(x, y, z), chest.getDefaultState().with(ChestBlock.FACING, player.getHorizontalFacing()));
+					if (stack.getCount() > 1) {
+						stack.setCount(stack.getCount() - 1);
+						inventory.setStack(i, stack);
+					} else {
+						inventory.setStack(i, ItemStack.EMPTY);
+					}
+				}
+			}
+		}
+		return b;
 	}
 }

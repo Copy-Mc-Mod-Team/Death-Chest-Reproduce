@@ -11,5 +11,6 @@ public class DeathChestReproduceForge {
 		// Submit our event bus to let architectury register our content on the right time
         EventBuses.registerModEventBus(DeathChestReproduce.MOD_ID, FMLJavaModLoadingContext.get().getModEventBus());
         DeathChestReproduce.init();
+
     }
 }

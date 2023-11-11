@@ -12,7 +12,11 @@
   "icon": "icon.png",
 
   "environment": "*",
-  "entrypoints": {},
+  "entrypoints": {
+    "main": [
+      "io.github.baka4n.deathchestreproduce.fabric.DeathChestReproduceFabric"
+    ]
+  },
   "mixins": [
     "deathchestreproduce.mixins.json",
     "deathchestreproduce-common.mixins.json"
