@@ -18,9 +18,6 @@ public class DeathChestReproduce
 
 
 	public static void init() {
-//		TickEvent.SERVER_PRE.register(instance -> {
-//			instance.sendMessage(Text.empty().append("test"));
-//		});
 
 		EntityEvent.LIVING_DEATH.register((entity, source) -> {
 			if (entity instanceof PlayerEntity player) {
