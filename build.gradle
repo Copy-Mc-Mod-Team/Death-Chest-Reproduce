@@ -49,3 +49,10 @@ allprojects {
         withSourcesJar()
     }
 }
+
+build {
+    dependsOn(
+            project(":fabric").build,
+            project(":forge").build
+    )
+}
